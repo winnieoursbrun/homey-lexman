@@ -1,0 +1,58 @@
+{
+  "name": {
+    "en": "Lexman Light"
+  },
+  "class": "light",
+  "capabilities": [
+    "onoff",
+    "dim"
+  ],
+  "platforms": [
+    "local"
+  ],
+  "connectivity": [
+    "zigbee"
+  ],
+  "images": {
+    "small": "/drivers/light/assets/images/small.png",
+    "large": "/drivers/light/assets/images/large.png",
+    "xlarge": "/drivers/light/assets/images/xlarge.png"
+  },
+  "zigbee": {
+    "manufacturerName": [
+      "LEXMAN"
+    ],
+    "productId": [
+      "DIM Light"
+    ],
+    "endpoints": {
+      "1": {
+        "clusters": [0, 4, 5, 6, 8],
+        "bindings": [6, 8]
+      }
+    },
+    "learnmode": {
+      "instruction": {
+        "en": "Toggle the power button on your Lexman device to start pairing."
+      }
+    }
+  },
+  "settings": [
+    {
+      "type": "group",
+      "label": {
+        "en": "Device information"
+      },
+      "children": [
+        {
+          "id": "zb_endpoint_id",
+          "type": "label",
+          "label": {
+            "en": "Endpoint ID"
+          },
+          "value": "1"
+        }
+      ]
+    }
+  ]
+}

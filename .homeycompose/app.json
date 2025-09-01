@@ -1,0 +1,30 @@
+{
+  "id": "lexman.leroymerlin.com",
+  "version": "1.0.0",
+  "compatibility": ">=12.4.0",
+  "sdk": 3,
+  "platforms": [
+    "local"
+  ],
+  "name": {
+    "en": "lexman"
+  },
+  "description": {
+    "en": "Adds support for Lexman devices"
+  },
+  "category": [
+    "lights"
+  ],
+  "permissions": [
+    "homey:wireless:zigbee"
+  ],
+  "images": {
+    "small": "/assets/images/small.png",
+    "large": "/assets/images/large.png",
+    "xlarge": "/assets/images/xlarge.png"
+  },
+  "author": {
+    "name": "Adrien Ruellou",
+    "email": "didi28000@gmail.com"
+  }
+}
