@@ -1,0 +1,31 @@
+{
+  "title": {
+    "en": "Button pressed",
+    "fr": "Bouton pressé"
+  },
+  "titleFormatted": {
+    "en": "Button [[button]] pressed",
+    "fr": "Bouton [[button]] pressé"
+  },
+  "args": [
+    {
+      "type": "device",
+      "name": "device",
+      "filter": "driver_id=controller"
+    }
+  ],
+  "tokens": [
+    {
+      "name": "button",
+      "type": "string",
+      "title": {
+        "en": "Button",
+        "fr": "Bouton"
+      },
+      "example": {
+        "en": "power",
+        "fr": "alimentation"
+      }
+    }
+  ]
+}
