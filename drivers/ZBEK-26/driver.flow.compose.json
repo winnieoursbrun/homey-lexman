@@ -1,0 +1,17 @@
+{
+  "triggers": [
+    { "id": "pressed_on", "title": { "en": "Pressed ON" } },
+    { "id": "pressed_off", "title": { "en": "Pressed OFF" } },
+    { "id": "pressed_brightness_up", "title": { "en": "Brightness Up" } },
+    { "id": "pressed_brightness_down", "title": { "en": "Brightness Down" } },
+    { "id": "pressed_up", "title": { "en": "Pressed Up" } },
+    { "id": "pressed_down", "title": { "en": "Pressed Down" } },
+    { "id": "pressed_left", "title": { "en": "Pressed Left" } },
+    { "id": "pressed_right", "title": { "en": "Pressed Right" } },
+    { "id": "pressed_center", "title": { "en": "Pressed Center" } },
+    { "id": "scene_1", "title": { "en": "Scene 1" } },
+    { "id": "scene_2", "title": { "en": "Scene 2" } },
+    { "id": "scene_3", "title": { "en": "Scene 3" } },
+    { "id": "scene_4", "title": { "en": "Scene 4" } }
+  ]
+}
