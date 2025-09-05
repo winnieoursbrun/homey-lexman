@@ -7,10 +7,12 @@
     "local"
   ],
   "name": {
-    "en": "Lexman"
+    "en": "Lexman",
+    "fr": "Lexman"
   },
   "description": {
-    "en": "Adds support for Lexman devices"
+    "en": "Adds support for Lexman devices",
+    "fr": "Ajoute la prise en charge des appareils Lexman"
   },
   "category": [
     "appliances",
