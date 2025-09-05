@@ -25,8 +25,7 @@
   ],
   "images": {
     "small": "/assets/images/small.png",
-    "large": "/assets/images/large.png",
-    "xlarge": "/assets/images/xlarge.png"
+    "large": "/assets/images/large.png"
   },
   "author": {
     "name": "winnieoursbrun"
@@ -245,8 +244,7 @@
       },
       "images": {
         "small": "/drivers/ZBEK-26/assets/images/small.png",
-        "large": "/drivers/ZBEK-26/assets/images/large.png",
-        "xlarge": "/drivers/ZBEK-26/assets/images/xlarge.png"
+        "large": "/drivers/ZBEK-26/assets/images/large.png"
       },
       "class": "remote",
       "capabilities": [],
