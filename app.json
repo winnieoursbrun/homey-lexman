@@ -324,6 +324,81 @@
           "template": "add_devices"
         }
       ]
+    },
+    {
+      "id": "ZBEK-4",
+      "name": {
+        "en": "Zigbee GU10 bulb",
+        "fr": "Ampoule Zigbee GU10"
+      },
+      "images": {
+        "small": "/drivers/ZBEK-26/assets/images/small.png",
+        "large": "/drivers/ZBEK-26/assets/images/large.png"
+      },
+      "class": "light",
+      "capabilities": [],
+      "capabilitiesOptions": {
+        "measure_battery": {
+          "title": {
+            "en": "Battery level",
+            "fr": "Niveau de batterie"
+          }
+        }
+      },
+      "energy": {
+        "approximation": {
+          "usageOn": 4.3,
+          "usageOff": 0.5
+        }
+      },
+      "platforms": [
+        "local"
+      ],
+      "connectivity": [
+        "zigbee"
+      ],
+      "zigbee": {
+        "manufacturerName": "ADEO",
+        "productId": "ZBEK-4",
+        "endpoints": {
+          "1": {
+            "clusters": [],
+            "bindings": []
+          }
+        },
+        "learnmode": {
+          "instruction": {
+            "en": "Turn the light on and off 6 times at 1 second intervals. (i.e. 12 presses of the ON/OFF button)",
+            "fr": "Allumer et eteindre la lampe 6 fois a 1 seconde d'intervalle. (Soit 12 appuis sur le bouton ON/OFF)"
+          }
+        }
+      },
+      "pair": [
+        {
+          "id": "list_my_devices",
+          "template": "list_devices",
+          "navigation": {
+            "next": "add_my_devices"
+          }
+        },
+        {
+          "id": "add_my_devices",
+          "template": "add_devices"
+        }
+      ],
+      "repair": [
+        {
+          "id": "list_devices",
+          "template": "list_devices",
+          "navigation": {
+            "next": "add_devices"
+          }
+        },
+        {
+          "id": "add_devices",
+          "template": "add_devices"
+        }
+      ]
     }
   ]
 }
