@@ -5,8 +5,8 @@
     "fr": "Ampoule Zigbee GU10"
   },
   "images": {
-    "small": "/drivers/ZBEK-26/assets/images/small.png",
-    "large": "/drivers/ZBEK-26/assets/images/large.png"
+    "small": "/drivers/ZBEK-4/assets/images/small.png",
+    "large": "/drivers/ZBEK-4/assets/images/large.png"
   },
   "class": "light",
   "capabilities": [],
