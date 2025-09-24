@@ -19,6 +19,74 @@ class AdeoRemote extends ZigBeeDevice {
       // Make sure to call the parent class's onNodeInit
       await super.onNodeInit({ zclNode });
 
+      // Register battery capability if not present
+      if (!this.hasCapability('measure_battery')) {
+        await this.addCapability('measure_battery');
+        this.log('Added measure_battery capability');
+      }
+
+      // Register battery capability using the proper ZigBeeDevice method
+      this.registerCapability('measure_battery', CLUSTER.POWER_CONFIGURATION, {
+        get: 'batteryPercentageRemaining',
+        report: 'batteryPercentageRemaining',
+        reportParser: (value) => {
+          this.log('Battery percentage report received:', value);
+          
+          // Handle different battery value formats
+          let batteryPercentage;
+          if (value === 255 || value === null || value === undefined) {
+            // Invalid/unknown battery level
+            return null;
+          } else if (value > 200) {
+            // Some devices report 0-255 scale
+            batteryPercentage = Math.max(0, Math.min(100, Math.round((value / 255) * 100)));
+          } else if (value > 100) {
+            // Standard ZCL 0-200 scale (200 = 100%)
+            batteryPercentage = Math.max(0, Math.min(100, Math.round(value / 2)));
+          } else {
+            // Already 0-100 scale
+            batteryPercentage = Math.max(0, Math.min(100, Math.round(value)));
+          }
+          
+          this.log(`Parsed battery percentage: ${batteryPercentage}%`);
+          return batteryPercentage;
+        },
+        reportOpts: {
+          configureAttributeReporting: {
+            minInterval: 300, // 5 minutes
+            maxInterval: 7200, // 2 hours
+            minChange: 2, // 2% change
+          },
+        },
+        getOpts: {
+          getOnStart: true, // Get battery level on device startup
+          getOnOnline: true, // Get battery level when device comes online
+        },
+      });
+
+      // Also try to register battery voltage as a fallback
+      try {
+        const powerCluster = this.zclNode.endpoints[1]?.clusters?.powerConfiguration;
+        if (powerCluster) {
+          // Listen for battery voltage as fallback
+          powerCluster.on('attr.batteryVoltage', (value) => {
+            this.log('Battery voltage report received:', value);
+            try {
+              // Convert voltage to percentage (typical CR2032: 3.0V = 100%, 2.0V = 0%)
+              const voltage = value / 10; // Convert from decivolts to volts
+              const batteryPercentage = Math.max(0, Math.min(100, Math.round((voltage - 2.0) / (3.0 - 2.0) * 100)));
+              
+              this.log(`Converted voltage ${voltage}V to battery percentage: ${batteryPercentage}%`);
+              this.setCapabilityValue('measure_battery', batteryPercentage).catch(this.error);
+            } catch (error) {
+              this.error('Error processing battery voltage:', error);
+            }
+          });
+        }
+      } catch (voltageErr) {
+        this.log('Battery voltage fallback not available:', voltageErr.message);
+      }
+
       // Initialize device state
       this.deviceState = {
         isInitialized: false,
@@ -314,22 +382,18 @@ class AdeoRemote extends ZigBeeDevice {
   /**
    * Setup manufacturer-specific cluster
    */
-  async setupManufacturerCluster(endpoint) {
+  async setupManufacturerCluster() {
     try {
-      endpoint.bind(AdeoCluster.NAME, new AdeoBoundCluster({
-        onSceneButton: (payload) => {
-          const { buttonId } = payload;
-          // Map button IDs to scene numbers (adjust mapping as needed)
-          const sceneMap = { 0x0a: 1, 0x0b: 2, 0x0c: 3, 0x0d: 4 };
-          const sceneId = sceneMap[buttonId];
-          
-          if (sceneId) {
-            this.triggerSceneButton(sceneId, payload);
-          }
-        }
-      }));
+      // Check if manufacturer cluster is available before binding
+      if (this.zclNode.endpoints[1].clusters.adeoManufacturerSpecific) {
+        await this.zclNode.endpoints[1].bind('adeoManufacturerSpecific');
+        this.log('Manufacturer cluster bound successfully');
+      } else {
+        this.log('Manufacturer cluster not available, skipping binding');
+      }
     } catch (error) {
-      this.error('Failed to setup manufacturer cluster:', error);
+      this.error('Failed to setup manufacturer cluster:', error.message);
+      // Continue initialization even if manufacturer cluster fails
     }
   }
 
@@ -429,7 +493,5 @@ class AdeoRemote extends ZigBeeDevice {
   }
 
 }
-
-module.exports = AdeoRemote;
 
 module.exports = AdeoRemote;
