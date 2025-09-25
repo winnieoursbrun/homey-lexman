@@ -163,14 +163,26 @@ class AdeoRemote extends ZigBeeDevice {
    */
   handleFrame(node, endpointId, clusterId, frame, meta) {
     try {
+      this.log(`Handling frame - endpoint: ${endpointId}, cluster: ${clusterId}`, {
+        frameType: typeof frame,
+        frameLength: frame?.length,
+        meta
+      });
+
       // Handle manufacturer-specific cluster (65024)
       if (endpointId === 1 && clusterId === 65024) {
         return this.handleManufacturerFrame(frame, meta);
       }
       
-      // Handle Color Control cluster (768) for up/down buttons
+      // Handle Color Control cluster (768) for up/down/left/right buttons
       if (endpointId === 1 && clusterId === 768) {
         return this.handleColorControlFrame(frame, meta);
+      }
+      
+      // Handle Scenes cluster (5) for scene buttons
+      if (endpointId === 1 && clusterId === 5) {
+        this.log('Received Scenes cluster frame:', { frame, meta });
+        // Let the scenes bound cluster handle this
       }
       
       // Call original handler for other clusters
@@ -224,19 +236,56 @@ class AdeoRemote extends ZigBeeDevice {
     this.log('Received Color Control frame:', {
       cmdId: frame.cmdId,
       data: frame.data ? frame.data.toString('hex') : 'no data',
-      meta
+      meta,
+      fullFrame: frame.toString ? frame.toString('hex') : frame
     });
     
     try {
-      if (!frame.data || frame.data.length < 1) {
+      // Parse the raw frame buffer to extract button information
+      let frameBuffer;
+      if (Buffer.isBuffer(frame)) {
+        frameBuffer = frame;
+      } else if (frame.toString && typeof frame.toString === 'function') {
+        frameBuffer = Buffer.from(frame.toString('hex'), 'hex');
+      } else {
+        this.log('Color Control frame format not recognized, skipping');
         return;
       }
 
-      const direction = frame.data[0];
-      const action = this.parseColorControlCommand(frame.cmdId, direction);
-      
-      if (action) {
-        this.triggerAction(action, { direction, cmdId: frame.cmdId });
+      // Check if frame follows expected pattern: 01[button_id][param][data_byte]...
+      if (frameBuffer.length >= 4 && frameBuffer[0] === 0x01) {
+        const buttonId = frameBuffer[1];  // Second byte is button ID
+        const param = frameBuffer[2];     // Third byte is parameter
+        const dataByte = frameBuffer[3];  // Fourth byte might help identify button
+        
+        this.log(`Parsed frame - buttonId: 0x${buttonId.toString(16)}, param: 0x${param.toString(16)}, dataByte: 0x${dataByte.toString(16)}`);
+        
+        const action = this.parseButtonWithContext(buttonId, param, dataByte, frameBuffer);
+        
+        if (action) {
+          this.triggerAction(action, { 
+            buttonId, 
+            param,
+            dataByte,
+            frameHex: frameBuffer.toString('hex'),
+            meta 
+          });
+        }
+      } else {
+        this.log('Frame does not match expected pattern, trying fallback parsing');
+        // Fallback to original parsing logic
+        const cmdId = frame.cmdId || frameBuffer[0];
+        const direction = frameBuffer[1] || 0x00;
+        const action = this.parseColorControlCommand(cmdId, direction, frameBuffer);
+        
+        if (action) {
+          this.triggerAction(action, { 
+            direction, 
+            cmdId, 
+            data: frameBuffer.toString('hex'),
+            meta 
+          });
+        }
       }
     } catch (error) {
       this.error('Error parsing Color Control frame:', error);
@@ -244,34 +293,253 @@ class AdeoRemote extends ZigBeeDevice {
   }
 
   /**
+   * Parse button with additional context from frame data
+   */
+  parseButtonWithContext(buttonId, param, dataByte, frameBuffer) {
+    this.log(`Parsing button with context - buttonId: 0x${buttonId.toString(16)}, param: 0x${param.toString(16)}, dataByte: 0x${dataByte.toString(16)}`);
+    
+    // Use the dataByte (4th byte) to help identify the actual button
+    // Final working mappings:
+    // - param 0x02 + dataByte 0x01 = Green Right  
+    // - param 0x02 + dataByte 0x03 = Green Left
+    // - param 0x05 + dataByte 0x01 = Green Up
+    // - param 0x05 + dataByte 0x03 = Green Down
+    // - param 0x4c + dataByte 0x01 = Red Up
+    // - param 0x4c + dataByte 0x03 = Red Down
+    
+    if (param === 0x02) {
+      // Green left/right buttons
+      if (dataByte === 0x01) {
+        return this.getButtonAction('pressed_green_right', 'green right (context detected)');
+      } else if (dataByte === 0x03) {
+        return this.getButtonAction('pressed_green_left', 'green left (context detected)');
+      }
+    } else if (param === 0x05) {
+      // Green up/down buttons
+      if (dataByte === 0x01) {
+        return this.getButtonAction('pressed_green_up', 'green up (context detected)');
+      } else if (dataByte === 0x03) {
+        return this.getButtonAction('pressed_green_down', 'green down (context detected)');
+      }
+    } else if (param === 0x4c) {
+      // Red buttons
+      if (dataByte === 0x01) {
+        return this.getButtonAction('pressed_red_up', 'red up (context detected)');
+      } else if (dataByte === 0x03) {
+        return this.getButtonAction('pressed_red_down', 'red down (context detected)');
+      }
+    }
+    
+    // Fallback to the original parseButtonId if context detection fails
+    return this.parseButtonId(buttonId, param);
+  }
+
+  /**
+   * Parse button ID and determine action
+   */
+  parseButtonId(buttonId, param) {
+    this.log(`Parsing button ID: 0x${buttonId.toString(16)}, param: 0x${param.toString(16)}`);
+    
+    // The button IDs increment with each press, so we need to determine button type based on patterns
+    // We'll use the parameter byte and the frame structure to identify buttons consistently
+    
+    const buttonMap = {
+      // Original mapping (for reference) - updated to new action names
+      0x17: () => this.getButtonAction('pressed_green_up', 'green up'),
+      0x18: () => this.getButtonAction('pressed_green_down', 'green down'),
+      0x19: () => this.getButtonAction('pressed_green_left', 'green left'),
+      0x1a: () => this.getButtonAction('pressed_green_right', 'green right'),
+      0x1b: () => this.getButtonAction('pressed_red_up', 'red up'),
+      0x1c: () => this.getButtonAction('pressed_red_down', 'red down'),
+      
+      // Updated mapping based on observed sequences
+      0x1d: () => this.getButtonAction('pressed_green_up', 'green up'),
+      0x1e: () => this.getButtonAction('pressed_green_down', 'green down'),
+      0x1f: () => this.getButtonAction('pressed_green_left', 'green left'),
+      0x20: () => this.getButtonAction('pressed_green_right', 'green right'),
+      0x21: () => this.getButtonAction('pressed_red_up', 'red up'),
+      0x22: () => this.getButtonAction('pressed_red_down', 'red down'),
+      
+      0x23: () => this.getButtonAction('pressed_green_up', 'green up'),
+      0x24: () => this.getButtonAction('pressed_green_down', 'green down'),
+      0x25: () => this.getButtonAction('pressed_green_left', 'green left'),
+      0x26: () => this.getButtonAction('pressed_green_right', 'green right'),
+      0x27: () => this.getButtonAction('pressed_red_up', 'red up'),
+      0x28: () => this.getButtonAction('pressed_red_down', 'red down')
+    };
+    
+    const parseFunction = buttonMap[buttonId];
+    if (parseFunction) {
+      return parseFunction();
+    }
+    
+    // Improved pattern detection based on actual observations
+    if (param === 0x4c) {
+      // Red buttons typically have param 0x4c
+      // Use buttonId modulo to determine up/down
+      if (buttonId % 2 === 1) {
+        return this.getButtonAction('pressed_red_up', 'red up (pattern detected)');
+      } else {
+        return this.getButtonAction('pressed_red_down', 'red down (pattern detected)');
+      }
+    } else if (param === 0x05) {
+      // Green up/down buttons have param 0x05
+      if (buttonId % 2 === 1) {
+        return this.getButtonAction('pressed_green_up', 'green up (param 0x05)');
+      } else {
+        return this.getButtonAction('pressed_green_down', 'green down (param 0x05)');
+      }
+    } else if (param === 0x02) {
+      // Green left/right buttons have param 0x02
+      // We need to track the button state to determine which button is actually being pressed
+      return this.determineGreenButtonFromHistory(buttonId, param);
+    }
+    
+    this.log(`Unhandled button ID: 0x${buttonId.toString(16)}, param: 0x${param.toString(16)}`);
+    return null;
+  }
+
+  /**
+   * Determine green button from history and context
+   */
+  determineGreenButtonFromHistory(buttonId, param) {
+    // Since the button IDs increment regardless of which physical button is pressed,
+    // we need a different approach. Let's use the third byte of the frame for additional context.
+    
+    // For now, let's assume that repeated presses of the same physical button
+    // will maintain some consistency in the frame structure beyond just the button ID
+    
+    // Check if we have recent button press history
+    if (this.lastButtonPress && this.lastButtonPress.buttonId) {
+      const timeDiff = Date.now() - this.lastButtonPress.timestamp;
+      
+      // If the button press is within 2 seconds and the parameter matches,
+      // it's likely the same physical button
+      if (timeDiff < 2000 && this.lastButtonPress.param === param) {
+        this.log(`Detected repeated press of same button: ${this.lastButtonPress.action}`);
+        return this.lastButtonPress.action;
+      }
+    }
+    
+    // Default pattern: alternate between left and right for param 0x02
+    // This is imperfect but better than cycling through all 4 buttons
+    if (buttonId % 2 === 1) {
+      const action = 'pressed_green_left';
+      this.lastButtonPress = { 
+        buttonId, 
+        param, 
+        action, 
+        timestamp: Date.now() 
+      };
+      return this.getButtonAction(action, 'green left (pattern detected)');
+    } else {
+      const action = 'pressed_green_right';
+      this.lastButtonPress = { 
+        buttonId, 
+        param, 
+        action, 
+        timestamp: Date.now() 
+      };
+      return this.getButtonAction(action, 'green right (pattern detected)');
+    }
+  }
+
+  /**
+   * Helper function to log and return button action
+   */
+  getButtonAction(action, description) {
+    this.log(`Remote action: ${description} -> ${action}`);
+    return action;
+  }
+
+  /**
    * Parse color control command and determine action
    */
-  parseColorControlCommand(cmdId, direction) {
-    switch (cmdId) {
-      case 76: {
-        // Original up/down buttons
-        const isUp = direction === 0x03;
-        const action = isUp ? 'pressed_brightness_up' : 'pressed_brightness_down';
-        this.log(`Remote action: ${isUp ? 'brightness up' : 'brightness down'} (cmd76, direction: 0x${direction.toString(16)})`);
-        return action;
-      }
-      case 5: {
-        // Additional up/down buttons
-        const isUp = direction === 0x03;
-        const action = isUp ? 'pressed_brightness_up' : 'pressed_brightness_down';
-        this.log(`Remote action: ${isUp ? 'brightness up' : 'brightness down'} (cmd5, direction: 0x${direction.toString(16)})`);
-        return action;
-      }
-      case 2: {
-        // Left/right buttons
-        const isRight = direction === 0x03;
-        const action = isRight ? 'pressed_color_right' : 'pressed_color_left';
-        this.log(`Remote action: ${isRight ? 'color right' : 'color left'} (cmd2, direction: 0x${direction.toString(16)})`);
-        return action;
-      }
-      default:
-        return null;
+  parseColorControlCommand(cmdId, direction, buttonData) {
+    this.log(`Parsing color control command - cmdId: ${cmdId}, direction: 0x${direction ? direction.toString(16) : 'undefined'}`);
+    
+    const actionMap = {
+      76: () => this.parseBrightnessCommand(cmdId, direction),
+      5: () => this.parseBrightnessCommand(cmdId, direction),
+      2: () => this.parseColorLeftRightCommand(cmdId, direction),
+      3: () => this.parseColorLeftRightCommand(cmdId, direction),
+      4: () => this.parseColorUpDownCommand(cmdId, direction),
+      6: () => this.parseColorCenterCommand(cmdId),
+      undefined: () => this.parseFallbackCommand(direction),
+      0: () => this.parseFallbackCommand(direction)
+    };
+    
+    const parseFunction = actionMap[cmdId];
+    if (parseFunction) {
+      return parseFunction();
     }
+    
+    this.log(`Unhandled color control command - cmdId: ${cmdId}, direction: 0x${direction ? direction.toString(16) : 'undefined'}`);
+    return null;
+  }
+
+  /**
+   * Parse brightness up/down commands
+   */
+  parseBrightnessCommand(cmdId, direction) {
+    if (direction === 0x00 || direction === 0x01) {
+      this.log(`Remote action: brightness down (cmd${cmdId}, direction: 0x${direction.toString(16)})`);
+      return 'pressed_brightness_down';
+    } else if (direction === 0x03 || direction === 0x02) {
+      this.log(`Remote action: brightness up (cmd${cmdId}, direction: 0x${direction.toString(16)})`);
+      return 'pressed_brightness_up';
+    }
+    return null;
+  }
+
+  /**
+   * Parse color left/right commands
+   */
+  parseColorLeftRightCommand(cmdId, direction) {
+    if (direction === 0x00 || direction === 0x01) {
+      this.log(`Remote action: color left (cmd${cmdId}, direction: 0x${direction.toString(16)})`);
+      return 'pressed_color_left';
+    } else if (direction === 0x03 || direction === 0x02) {
+      this.log(`Remote action: color right (cmd${cmdId}, direction: 0x${direction.toString(16)})`);
+      return 'pressed_color_right';
+    }
+    return null;
+  }
+
+  /**
+   * Parse color up/down commands
+   */
+  parseColorUpDownCommand(cmdId, direction) {
+    if (direction === 0x00 || direction === 0x01) {
+      this.log(`Remote action: color down (cmd${cmdId}, direction: 0x${direction.toString(16)})`);
+      return 'pressed_color_down';
+    } else if (direction === 0x03 || direction === 0x02) {
+      this.log(`Remote action: color up (cmd${cmdId}, direction: 0x${direction.toString(16)})`);
+      return 'pressed_color_up';
+    }
+    return null;
+  }
+
+  /**
+   * Parse color center command
+   */
+  parseColorCenterCommand(cmdId) {
+    this.log(`Remote action: color center (cmd${cmdId})`);
+    return 'pressed_color_center';
+  }
+
+  /**
+   * Parse fallback command when cmdId is unknown
+   */
+  parseFallbackCommand(direction) {
+    if (direction === 0x00 || direction === 0x01) {
+      this.log(`Remote action: brightness down (unknown cmd, direction: 0x${direction ? direction.toString(16) : '00'})`);
+      return 'pressed_brightness_down';
+    } else if (direction === 0x03 || direction === 0x02) {
+      this.log(`Remote action: brightness up (unknown cmd, direction: 0x${direction ? direction.toString(16) : '03'})`);
+      return 'pressed_brightness_up';
+    }
+    return null;
   }
 
   /**

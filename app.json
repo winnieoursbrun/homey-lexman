@@ -232,6 +232,84 @@
             "filter": "driver_id=ZBEK-26"
           }
         ]
+      },
+      {
+        "id": "pressed_green_up",
+        "title": {
+          "en": "Pressed Green Up"
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=ZBEK-26"
+          }
+        ]
+      },
+      {
+        "id": "pressed_green_down",
+        "title": {
+          "en": "Pressed Green Down"
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=ZBEK-26"
+          }
+        ]
+      },
+      {
+        "id": "pressed_green_left",
+        "title": {
+          "en": "Pressed Green Left"
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=ZBEK-26"
+          }
+        ]
+      },
+      {
+        "id": "pressed_green_right",
+        "title": {
+          "en": "Pressed Green Right"
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=ZBEK-26"
+          }
+        ]
+      },
+      {
+        "id": "pressed_red_up",
+        "title": {
+          "en": "Pressed Red Up"
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=ZBEK-26"
+          }
+        ]
+      },
+      {
+        "id": "pressed_red_down",
+        "title": {
+          "en": "Pressed Red Down"
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=ZBEK-26"
+          }
+        ]
       }
     ]
   },

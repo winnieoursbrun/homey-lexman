@@ -12,6 +12,12 @@
     { "id": "pressed_color_down", "title": { "en": "Pressed Color Down" } },
     { "id": "pressed_color_left", "title": { "en": "Pressed Color Left" } },
     { "id": "pressed_color_right", "title": { "en": "Pressed Color Right" } },
-    { "id": "pressed_color_center", "title": { "en": "Pressed Color Center" } }
+    { "id": "pressed_color_center", "title": { "en": "Pressed Color Center" } },
+    { "id": "pressed_green_up", "title": { "en": "Pressed Green Up" } },
+    { "id": "pressed_green_down", "title": { "en": "Pressed Green Down" } },
+    { "id": "pressed_green_left", "title": { "en": "Pressed Green Left" } },
+    { "id": "pressed_green_right", "title": { "en": "Pressed Green Right" } },
+    { "id": "pressed_red_up", "title": { "en": "Pressed Red Up" } },
+    { "id": "pressed_red_down", "title": { "en": "Pressed Red Down" } }
   ]
 }
